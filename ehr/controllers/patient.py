@@ -5,7 +5,9 @@ import fhirclient.models.patient as p
 import fhirclient.models.humanname as hn
 import fhirclient.models.fhirdate as fd  # .FHIRDate as fhirdate
 import fhirclient.models.address as addr
+import fhirclient.models.condition as condi
 from datetime import datetime
+import json
 
 from ehr import (
     app,
@@ -54,7 +56,7 @@ def patient_list():
     length = int(length)
 
     count = db.engine.execute("select count(*) from T_Patients").scalar()
-    result = db.engine.execute("select * from T_Patients limit %d, %d" % (start, length))
+    result = db.engine.execute("select * from T_Patients p left outer join T_Conditions c on p.pat_id = c.con_patient limit %d, %d" % (start, length))
     plist = []
     total = count
 
@@ -76,8 +78,11 @@ def patient_list():
         patient.gender = row['pat_gender']
         patient.birthDate = fd.FHIRDate(
             datetime.strftime(row['pat_birthdate'], "%Y-%m-%d"))
+        description = row['con_description']
         # patient.maritalStatus = row['pat_marital']
-        plist.append(patient.as_json())
+
+        custom_patient = {'patient': patient.as_json(), 'description': description}
+        plist.append(custom_patient)
 
     return jsonify(result=plist, total=total)
 
